@@ -9,7 +9,8 @@
       "phase": 0,
       "name": "docs-ops",
       "status": "completed",
-      "started_at": "2026-08-04T01:28:13+0900"
+      "started_at": "2026-08-04T01:28:13+0900",
+      "completed_at": "2026-08-04T01:37:53+0900"
     },
     {
       "phase": 1,

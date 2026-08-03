@@ -1,0 +1,13 @@
+Phase 0 완료 및 커밋했습니다.
+
+- 운영 설정 문서: [user-intervention.md](/Users/gyuteoi/Desktop/harness/docs/user-intervention.md)
+- 실행·복구 runbook: [runbook.md](/Users/gyuteoi/Desktop/harness/docs/runbook.md)
+- README 제품 설명·빠른 시작 추가
+- canonical 문서의 결과 세 종류와 `analysis_failed` 구분 정합화
+- Phase 0 상태: `completed`
+- 모든 AC 및 하네스 컴파일 검사 통과
+- `docs-diff.md`는 생성하지 않음
+- 커밋: `3156cec feat(alignment-memory): phase 0 - docs-ops`
+- 작업 트리 clean, `main`은 `origin/main`보다 3커밋 앞선 상태
+
+외부 설정은 [Supabase Auth](https://supabase.com/docs/guides/auth/social-login/auth-github), [GitHub App](https://docs.github.com/en/apps/sharing-github-apps/registering-a-github-app-using-url-parameters), [OpenRouter](https://openrouter.ai/docs/guides/features/structured-outputs), [Vercel FastAPI](https://vercel.com/docs/frameworks/backend/fastapi) 공식 문서와 대조했습니다.
