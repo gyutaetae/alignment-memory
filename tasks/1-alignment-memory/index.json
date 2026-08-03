@@ -8,7 +8,8 @@
     {
       "phase": 0,
       "name": "docs-ops",
-      "status": "pending"
+      "status": "completed",
+      "started_at": "2026-08-04T01:28:13+0900"
     },
     {
       "phase": 1,

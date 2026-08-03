@@ -101,6 +101,6 @@ Status for all entries: `accepted` unless noted.
 
 ## ADR-017 — Narrow MVP boundary
 
-- **Decision:** one public repository, desktop web, invited collaborators, Direct Conflict + Missing Alignment.
+- **Decision:** one public repository, desktop web, invited collaborators, and three results: Aligned, Missing Alignment, Direct Conflict.
 - **Excluded:** browser extension; Slack/Notion/Figma/Agora ingestion; private/multi-repo; external forks; Stale Reference; whole-code ingestion.
 - **Intent:** a complete, deployed, evidence-rich vertical slice is the winning portfolio artifact.

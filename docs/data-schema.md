@@ -64,7 +64,7 @@ Preferences are self-declared. Derived descriptions of personality, culture, or 
 | `alignmentAnalyses` | `id`, `repositoryId`, `prNumber`, `headSha`, `knowledgeRevision`, `outcome`, `aiRunId`, timestamps |
 | `alignmentFindings` | `id`, `analysisId`, `findingType`, `targetNodeId?`, `explanation`, `recommendedAction`, `validationStatus` |
 
-`outcome ∈ {aligned, direct_conflict, missing_alignment, analysis_failed}`. Model confidence alone cannot select `direct_conflict`.
+완료된 분석의 `outcome ∈ {aligned, direct_conflict, missing_alignment}`다. Provider 또는 검증 오류는 Job을 `analysis_failed`로 끝내며 alignment 결과가 아니다. Model confidence alone cannot select `direct_conflict`.
 
 ### Borderless and correction records
 
