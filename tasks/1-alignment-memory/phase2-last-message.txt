@@ -1,0 +1,11 @@
+Phase 2 작업을 완료했습니다.
+
+- 불변 도메인 엔티티, enum, evidence 검증, 상태 전이·append-only 정책 구현
+- 엄격한 OpenRouter용 [analysis.py](/Users/gyuteoi/Desktop/harness/backend/src/alignment_memory/contracts/analysis.py) 계약 구현
+- GitHub 형태 fixture 6개 추가: Aligned 3개, Direct Conflict 3개
+- 단위 테스트 19개 및 전체 Backend 테스트 21개 통과
+- Ruff, schema 출력, fixture 개수, `git diff --check` 모두 통과
+- [index.json](/Users/gyuteoi/Desktop/harness/tasks/1-alignment-memory/index.json)의 Phase 2 상태를 `completed`로 변경
+- 커밋 완료: `713e408 feat(alignment-memory): phase 2 - domain`
+- 작업 트리는 깨끗합니다.
+
