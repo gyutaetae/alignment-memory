@@ -1,0 +1,14 @@
+Phase 6 작업을 완료하고 커밋했습니다.
+
+- Worker CLI: `analyze-event`, `publish`
+- HMAC client, event parser, artifact schema, 고정 게시 템플릿 분리
+- PR 댓글 marker/head SHA 기반 멱등 업데이트
+- deterministic Wiki/Wikilink 및 경로 제한
+- Analyze/Publish 권한 분리 workflow
+- 보안·worker 테스트 22개 통과
+- 전체 Backend: 80 passed, 1 skipped
+- Ruff 및 모든 AC 통과
+- Phase 6 상태: `completed`
+- 커밋: `8f71475 feat(alignment-memory): phase 6 - actions`
+- 작업 트리: clean
+
