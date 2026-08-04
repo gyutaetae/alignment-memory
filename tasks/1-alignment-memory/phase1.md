@@ -1,5 +1,11 @@
 # Phase 1: Application scaffold
 
+## 재실행 컨텍스트
+
+이 phase의 이전 시도는 npm lockfile 생성 지연으로 30분 timeout됐지만, 의도한 scaffold와 `backend/uv.lock`, `apps/web/package-lock.json`은 이미 작업 트리에 남아 있을 수 있다. 기존 파일을 폐기하거나 처음부터 다시 만들지 말고 먼저 검토한 뒤 부족한 부분만 수정하고 Acceptance Criteria를 즉시 실행하라.
+
+프로세스 목록에 보이는 `scripts/run_phases.py 1-alignment-memory`와 그 Codex child는 **현재 너를 실행한 부모/자기 프로세스**다. 이를 중복 실행으로 오인해 기다리거나 poll·kill하지 말고, 다른 runner를 시작하지도 마라. 저장소 루트의 untracked `.npm-cache/`가 이전 시도의 패키지 캐시로 존재하면 내용이 npm cache뿐인지 확인한 뒤 제거하고 커밋에 포함하지 마라.
+
 ## 사전 준비
 
 아래 문서와 phase 0 결과를 읽어라:
@@ -49,4 +55,3 @@ git diff --check
 - 이 phase에서는 실제 도메인 규칙, DB 스키마, GitHub/OpenRouter 호출을 구현하지 마라.
 - import 또는 테스트 수집만으로 외부 네트워크나 자격증명을 요구하면 안 된다.
 - 하네스의 Python 환경과 Backend uv 환경을 섞지 마라.
-
