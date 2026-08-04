@@ -10,7 +10,7 @@ requires-python = ">=3.12,<3.14"
 dependencies = [
   "fastapi>=0.116,<1.0",
   "httpx>=0.28,<1.0",
-  "psycopg[binary]>=3.2,<4.0",
+  "psycopg[binary,pool]>=3.2,<4.0",
   "pydantic>=2.11,<3.0",
   "pydantic-settings>=2.10,<3.0",
   "pyjwt>=2.10,<3.0",
@@ -28,6 +28,9 @@ dev = [
 addopts = "--strict-markers --strict-config"
 asyncio_mode = "auto"
 testpaths = ["tests"]
+markers = [
+  "postgres: requires TEST_DATABASE_URL and exercises PostgreSQL migrations",
+]
 
 [tool.ruff]
 line-length = 100
