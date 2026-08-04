@@ -1,0 +1,20 @@
+Phase 5를 완료하고 커밋했습니다.
+
+- FastAPI fixture/live composition root 구현
+- Supabase JWT 및 repository membership 검증
+- 사용자·Context Passport·Handshake·Override API 구현
+- HMAC, replay window, idempotency, stale SHA 검증 구현
+- 공통 오류 envelope, request ID, secret-safe logging 적용
+- Phase 5 상태를 `completed`로 업데이트
+- 작업 트리 clean
+
+검증 결과:
+
+- API 테스트: `9 passed`
+- 전체 테스트: `58 passed, 1 skipped`  
+  - Postgres 환경변수가 필요한 테스트만 정상 skip
+- Ruff: 통과
+- OpenAPI factory: 통과
+- `git diff --check`: 통과
+
+커밋: `c16a423 feat(alignment-memory): phase 5 - api`
