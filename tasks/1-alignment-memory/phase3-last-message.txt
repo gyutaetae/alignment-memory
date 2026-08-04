@@ -1,0 +1,12 @@
+Phase 3 구현을 완료하고 커밋했습니다.
+
+- SQL migration 5개: UUID/FK/제약조건, append-only trigger, RLS 및 service-role 경계
+- Async repository port, InMemory/Postgres adapter 구현
+- Contract·migration·Postgres marker 테스트 추가
+- 전체 테스트: `31 passed, 1 skipped`
+  - `TEST_DATABASE_URL` 미설정으로 실제 PostgreSQL integration만 명시적 skip
+- Ruff, migration `rg`, `git diff --check` 통과
+- Phase 3 상태: `completed`
+- 커밋: `3d14020 feat(alignment-memory): phase 3 - persistence`
+- 작업 트리: clean
+
