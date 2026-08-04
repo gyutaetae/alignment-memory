@@ -1,0 +1,13 @@
+Phase 8 구현·검증·커밋을 완료했습니다.
+
+- Fixture vertical slice와 6개 평가 fixture 모두 통과: [evaluation.json](/Users/gyuteoi/Desktop/harness/artifacts/demo/evaluation.json)
+- API+Worker 재시도 멱등성 E2E 추가: [test_vertical_slice.py](/Users/gyuteoi/Desktop/harness/backend/tests/integration/test_vertical_slice.py)
+- Web Vercel SPA 설정과 Backend Docker healthcheck 완성. Vercel 설정은 [공식 Vite SPA 지침](https://vercel.com/docs/frameworks/frontend/vite)을 따릅니다.
+- 3분 발표 및 fixture/live 증거 구분 문서: [demo-script.md](/Users/gyuteoi/Desktop/harness/docs/demo-script.md)
+- Backend: `87 passed, 1 skipped`
+- Web: lint, `5 passed`, production build 통과
+- Phase 8 상태: `completed`
+- 커밋: `325338a feat(alignment-memory): phase 8 - hardening`
+
+참고로 `npm audit`의 React Router high 2건은 사용하지 않는 RSC 모드 advisory이며, 모든 요구 AC는 통과했습니다. 작업 트리는 깨끗하고 `main`은 `origin/main`보다 23커밋 앞서 있습니다.
+
