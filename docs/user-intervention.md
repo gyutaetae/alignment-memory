@@ -175,17 +175,18 @@ curl -fsS https://openrouter.ai/api/v1/models \
 - 노출이 의심되면 즉시 이전 key를 폐기하고 GitHub run log와 OpenRouter usage를 점검한다.
 - 모델 ID 변경은 Actions Variable만 갱신하며, fixture 평가와 structured-output 지원 확인을 통과한 뒤 production에 적용한다.
 
-## 4. Vercel Web 배포와 FastAPI URL
+## 4. Vercel Web 배포와 Docker FastAPI URL
 
 ### 목적
 
-React/Vite Web과 FastAPI control plane을 공개 HTTPS URL로 배포한다. Web은 API URL을 빌드 시 주입하고, GitHub App과 Actions는 같은 FastAPI production URL을 사용한다.
+React/Vite Web은 Vercel에, FastAPI control plane은 `backend/Dockerfile`을 실행하는 container host에 공개 HTTPS URL로 배포한다. Web은 API URL을 빌드 시 주입하고, GitHub App과 Actions는 같은 FastAPI production URL을 사용한다.
 
 ### 최소 권한
 
-- 같은 저장소에 Web과 API용 Vercel 프로젝트를 분리하고 각 Root Directory를 제한한다.
+- Vercel Web 프로젝트의 Root Directory를 `apps/web`으로 제한한다.
+- API container host는 저장소의 `backend/` build context만 사용한다.
 - Web 프로젝트에는 공개 `VITE_*` 값만 둔다.
-- API 프로젝트에만 DB, GitHub App, 내부 HMAC 비밀을 둔다. OpenRouter key는 두지 않는다.
+- API container host에만 DB, GitHub App, 내부 HMAC 비밀을 둔다. OpenRouter key는 두지 않는다.
 - Preview와 Production 환경변수를 분리한다. production GitHub App callback/webhook에는 production API URL만 사용한다.
 
 ### 환경변수 이름
@@ -197,31 +198,30 @@ React/Vite Web과 FastAPI control plane을 공개 HTTPS URL로 배포한다. Web
 | `VITE_API_BASE_URL` | Vercel Web | 아님 |
 | `VITE_SUPABASE_URL` | Vercel Web | 아님 |
 | `VITE_SUPABASE_PUBLISHABLE_KEY` | Vercel Web | 공개 클라이언트 키 |
-| `CORS_ALLOWED_ORIGINS` | Vercel API | 아님. 허용할 Web origin만 기재 |
-| `INTERNAL_HMAC_SECRET` | Vercel API, Analyze Action | 비밀 |
-| `DATABASE_URL` | Vercel API | 비밀 |
+| `CORS_ALLOWED_ORIGINS` | API container host | 아님. 허용할 Web origin만 기재 |
+| `INTERNAL_HMAC_SECRET` | API container host, Analyze Action | 비밀 |
+| `DATABASE_URL` | API container host | 비밀 |
 
-API 프로젝트에는 앞 절의 `SUPABASE_*`와 `GITHUB_APP_*` 서버 변수도 등록한다.
+API container host에는 앞 절의 `SUPABASE_*`와 `GITHUB_APP_*` 서버 변수도 등록한다.
 
 ### 설정 위치
 
-1. Vercel에서 같은 GitHub 저장소를 두 번 import한다.
-2. Web project의 Root Directory는 `apps/web`, Framework Preset은 Vite로 둔다.
-3. API project는 phase 8의 FastAPI Vercel entrypoint 설정을 사용한다. Vercel 제약이 확인되면 canonical 결정대로 `backend/Dockerfile`을 지원하는 호스트에 배포해도 된다.
-4. Web의 `VITE_API_BASE_URL`을 API production URL로, API의 `CORS_ALLOWED_ORIGINS`를 Web production origin으로 설정한다.
-5. API URL을 GitHub App callback/webhook과 GitHub Actions의 `ALIGNMENT_API_BASE_URL`에 동일하게 반영한다.
+1. Vercel에서 GitHub 저장소를 import하고 Root Directory를 `apps/web`, Framework Preset을 Vite로 둔다. 저장소의 `apps/web/vercel.json`을 사용한다.
+2. API container host에서 `backend/Dockerfile`을 `backend/` context로 build한다. `$PORT` start와 `/healthz` healthcheck가 모두 통과해야 한다.
+3. Web의 `VITE_API_BASE_URL`을 API production URL로, API의 `CORS_ALLOWED_ORIGINS`를 Web production origin으로 설정한다.
+4. API URL을 GitHub App callback/webhook과 GitHub Actions의 `ALIGNMENT_API_BASE_URL`에 동일하게 반영한다.
 
-공식 참고: [Vite on Vercel](https://vercel.com/docs/frameworks/frontend/vite), [FastAPI on Vercel](https://vercel.com/docs/frameworks/backend/fastapi), [Vercel 환경변수](https://vercel.com/docs/environment-variables).
+공식 참고: [Vite on Vercel](https://vercel.com/docs/frameworks/frontend/vite), [Vercel 환경변수](https://vercel.com/docs/environment-variables).
 
 ### 확인 방법
 
-phase 8 배포 설정이 추가된 뒤 CLI 또는 Git 연동으로 배포한다.
+저장소의 Phase 8 배포 설정을 사용해 CLI 또는 Git 연동으로 배포한다.
 
 ```bash
 npx vercel --cwd apps/web
 npx vercel --prod --cwd apps/web
-npx vercel --cwd backend
-npx vercel --prod --cwd backend
+docker build -f backend/Dockerfile -t alignment-memory-api backend
+docker run --rm --env-file backend/.env -e PORT=8000 -p 8000:8000 alignment-memory-api
 curl -fsS "$ALIGNMENT_API_BASE_URL/healthz"
 curl -fsSI "$ALIGNMENT_WEB_URL" | head -n 1
 ```
@@ -231,5 +231,5 @@ Web에서 로그인 → repository 목록 → Initial Sync까지 실행해 브�
 ### 폐기와 회전
 
 - URL 변경 시 새 API health 확인 → Web/Actions/GitHub App URL 갱신 → callback/webhook 재확인 → 이전 deployment 제거 순서로 진행한다.
-- Vercel 비밀은 새 값을 모든 필요한 environment에 등록하고 redeploy한 뒤 이전 값을 제거한다.
+- Vercel 공개 환경변수와 API host 비밀은 새 값을 필요한 environment에 등록하고 redeploy한 뒤 이전 값을 제거한다.
 - 프로젝트 폐기 전 GitHub App callback/webhook을 비활성화하고 Actions 비밀과 Supabase redirect URL을 제거한다.

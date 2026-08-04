@@ -48,14 +48,20 @@ npm --prefix apps/web test -- --run
 npm --prefix apps/web run build
 ```
 
-fixture demo가 추가된 뒤에는 한 명령으로 vertical slice를 확인한다.
+한 명령으로 fixture vertical slice를 확인한다.
 
 ```bash
 uv run --project backend python -m alignment_memory.interfaces.worker.cli \
   demo --output artifacts/demo
 test -s artifacts/demo/evaluation.json
 test -s artifacts/demo/evaluation.md
+jq -e '.execution.mode == "fixture" and .execution.externalServicesCalled == false \
+  and .summary.passed == true' artifacts/demo/evaluation.json
+jq -e '.passed == true and (.idempotencyAssertions | all)' \
+  artifacts/demo/vertical-slice.json
 ```
+
+이 명령은 FastAPI 내부 HMAC API와 Worker를 ASGI에서 함께 호출한다. `conflict-comment.md`, `resolved-comment.md`, `project-memory.md`, `vertical-slice.json`은 fixture proof이며 외부 서비스 실행 증거가 아니다.
 
 ## 2. 실제 연동 모드
 
@@ -68,6 +74,15 @@ git status --short
 ```
 
 `git status`에 `.env` 또는 `.env.local`이 나타나면 실행을 중지하고 `.gitignore`를 고친다. [user-intervention.md](./user-intervention.md)의 Supabase, GitHub App, OpenRouter, Vercel 확인을 모두 마친 뒤 API를 실행한다.
+
+서버를 띄우기 전에 live 필수 설정과 CORS origin을 fail-fast 검증한다.
+
+```bash
+APP_MODE=live uv run --project backend python -c \
+  "from alignment_memory.settings import Settings; Settings().validate_runtime(); print('live configuration valid')"
+```
+
+`CORS_ALLOWED_ORIGINS`는 쉼표로 구분한 정확한 `https://...` Web origin만 허용한다. `*`, scheme이 없는 host, 빈 값은 거절된다.
 
 ```bash
 APP_MODE=live uv run --project backend \
@@ -83,6 +98,32 @@ npm --prefix apps/web run dev -- --host 127.0.0.1
 ```
 
 실제 분석은 trusted `main`의 GitHub Action Analyze Job에서 실행한다. FastAPI 요청 안에서 긴 OpenRouter 호출이나 Git push를 실행하지 않는다.
+
+### 배포 파일 검증
+
+Web은 `apps/web/vercel.json`의 Vite build와 SPA rewrite를 사용한다.
+
+```bash
+npm --prefix apps/web ci
+npm --prefix apps/web run build
+npx vercel --cwd apps/web
+```
+
+Backend는 `backend/Dockerfile`의 `$PORT` start command와 `/healthz` container healthcheck를 사용한다.
+
+```bash
+docker build -f backend/Dockerfile -t alignment-memory-api:local backend
+docker run --rm --env-file backend/.env -e PORT=8000 -p 8000:8000 \
+  alignment-memory-api:local
+curl -fsS http://127.0.0.1:8000/healthz | jq .
+```
+
+fixture container smoke에는 live 비밀이 필요 없다.
+
+```bash
+docker run --rm -e APP_MODE=fixture -e PORT=8000 -p 8000:8000 \
+  alignment-memory-api:local
+```
 
 ## 3. Initial Sync
 
@@ -246,6 +287,7 @@ uv run --project backend python -m alignment_memory.interfaces.worker.cli \
   demo --output artifacts/demo
 jq . artifacts/demo/evaluation.json
 sed -n '1,200p' artifacts/demo/evaluation.md
+jq . artifacts/demo/vertical-slice.json
 ```
 
 그다음 live proof를 아래 순서로 보여준다.

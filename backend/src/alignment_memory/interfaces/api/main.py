@@ -10,6 +10,7 @@ from uuid import uuid4
 
 from fastapi import FastAPI, Request
 from fastapi.exceptions import RequestValidationError
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from starlette.exceptions import HTTPException as StarletteHttpException
 
@@ -45,6 +46,20 @@ def create_app(
         title=app_settings.app_name,
         version="0.1.0",
         lifespan=lifespan,
+    )
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=list(app_settings.parsed_cors_allowed_origins),
+        allow_credentials=True,
+        allow_methods=["GET", "POST", "OPTIONS"],
+        allow_headers=[
+            "Authorization",
+            "Content-Type",
+            "Idempotency-Key",
+            "X-Alignment-Signature",
+            "X-Alignment-Timestamp",
+            "X-Request-ID",
+        ],
     )
     app.state.settings = app_settings
     app.state.container = app_container

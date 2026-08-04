@@ -161,7 +161,9 @@ Return errors as `{error: {code, message, retryable, requestId}}`. Do not expose
 
 - Backend: Python 3.12, uv, Pydantic, FastAPI, Ruff, pytest.
 - Frontend: React, TypeScript, Vite, npm, ESLint, Vitest, React Testing Library.
-- Web/API: Vercel first; Dockerfile is the Railway-style fallback for FastAPI.
+- Web: Vercel using `apps/web/vercel.json`.
+- API: the production-neutral `backend/Dockerfile` start command and `/healthz` healthcheck;
+  deploy that image to the selected container host.
 - Database/Auth: Supabase.
 - Worker: GitHub-hosted Actions.
 - Runtime AI: OpenRouter; Codex Pro is a development agent, not application runtime.

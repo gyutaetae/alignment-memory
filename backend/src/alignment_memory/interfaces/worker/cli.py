@@ -94,6 +94,12 @@ def build_parser() -> argparse.ArgumentParser:
     publish.add_argument("--artifact", type=Path, required=True)
     publish.add_argument("--output", type=Path, required=True)
     publish.add_argument("--repository-root", type=Path, default=Path.cwd())
+
+    demo = commands.add_parser(
+        "demo",
+        help="run the credential-free fixture vertical slice and evaluation",
+    )
+    demo.add_argument("--output", type=Path, required=True)
     return parser
 
 
@@ -102,8 +108,12 @@ def main(argv: Sequence[str] | None = None) -> int:
     try:
         if args.command == "analyze-event":
             asyncio.run(_run_analyze_command(args))
-        else:
+        elif args.command == "publish":
             _run_publish_command(args)
+        else:
+            from alignment_memory.interfaces.worker.demo import run_demo
+
+            asyncio.run(run_demo(args.output, analyze_event_runner=analyze_event))
     except (
         EventParseError,
         ValidationError,
@@ -505,6 +515,23 @@ async def _advance(
 ) -> str:
     if current_status == target:
         return target
+    ordered = (
+        "queued",
+        "fetching",
+        "analyzing",
+        "validating",
+        "persisting",
+        "writing_github",
+        "completed",
+    )
+    if current_status == "failed":
+        raise WorkerApiError("job_state_conflict", "failed jobs cannot be resumed")
+    if (
+        current_status in ordered
+        and target in ordered
+        and ordered.index(current_status) > ordered.index(target)
+    ):
+        return current_status
     if current_status != expected:
         raise WorkerApiError(
             "job_state_conflict",

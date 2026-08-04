@@ -64,7 +64,9 @@
     {
       "phase": 8,
       "name": "hardening",
-      "status": "pending"
+      "status": "completed",
+      "started_at": "2026-08-04T14:22:20+0900",
+      "completed_at": "2026-08-04T15:17:23+0900"
     }
   ]
 }

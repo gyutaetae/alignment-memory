@@ -36,9 +36,16 @@ APP_MODE=fixture uv run --project backend \
 
 # 터미널 2
 VITE_API_BASE_URL=http://127.0.0.1:8000 npm --prefix apps/web run dev
+
+# 한 번에 실행하는 credential-free vertical slice + 6-fixture 평가
+uv run --project backend python -m alignment_memory.interfaces.worker.cli \
+  demo --output artifacts/demo
+jq '{execution, summary, correctionImpact}' artifacts/demo/evaluation.json
 ```
 
-실제 Supabase/GitHub App/OpenRouter/Vercel 설정은 비밀을 저장소에 넣지 않고 [사용자 개입 가이드](docs/user-intervention.md)를 따른다. Initial Sync, PR Analyze, Merge Publish, 복구와 멱등 재실행은 [runbook](docs/runbook.md)에 있다.
+`artifacts/demo/**`는 결정적 fixture 결과이며 GitHub/OpenRouter/Supabase/Vercel live 검증이 아니다. 실제 Supabase/GitHub App/OpenRouter/Vercel 설정은 비밀을 저장소에 넣지 않고 [사용자 개입 가이드](docs/user-intervention.md)를 따른다. Initial Sync, PR Analyze, Merge Publish, 복구와 멱등 재실행은 [runbook](docs/runbook.md)에, 발표 동선과 live trace 수집 위치는 [3분 데모 스크립트](docs/demo-script.md)에 있다.
+
+Web 배포 설정은 `apps/web/vercel.json`, Backend container 시작 및 healthcheck는 `backend/Dockerfile`이 기준이다. `APP_MODE=live`는 DB, JWT 검증, GitHub App, 내부 HMAC, 명시적 CORS origin이 빠지면 서버 시작 전에 실패한다. `APP_MODE=fixture`는 외부 자격증명 없이 계속 실행된다.
 
 Canonical 문서: [PRD](docs/prd.md) · [Flow](docs/flow.md) · [Data Schema](docs/data-schema.md) · [Code Architecture](docs/code-architecture.md) · [ADR](docs/adr.md)
 

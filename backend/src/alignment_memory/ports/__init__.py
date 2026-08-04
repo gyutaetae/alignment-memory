@@ -2,6 +2,7 @@
 
 from alignment_memory.ports.control_plane import (
     ControlPlaneRepository,
+    GeneratedArtifactRecord,
     KnowledgeNodeSnapshot,
     MembershipRecord,
     RepositoryRecord,
@@ -62,6 +63,7 @@ __all__ = [
     "GitHubResponseError",
     "GitHubSourceType",
     "GitHubTimeoutError",
+    "GeneratedArtifactRecord",
     "JobRepository",
     "KnowledgeNodeSnapshot",
     "KnowledgeRepository",

@@ -103,6 +103,7 @@ class IdempotencyRegistry:
 
 class AppContainer:
     def __init__(self, settings: Settings) -> None:
+        settings.validate_runtime()
         self.settings = settings
         self.idempotency = IdempotencyRegistry()
         self.repository: RepositoryAdapter | None = None

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from datetime import datetime
 from typing import Protocol, runtime_checkable
 
 from alignment_memory.domain import (
@@ -45,6 +46,18 @@ class MembershipRecord:
 class KnowledgeNodeSnapshot:
     node: KnowledgeNode
     version: KnowledgeNodeVersion
+
+
+@dataclass(frozen=True, slots=True, kw_only=True)
+class GeneratedArtifactRecord:
+    id: str
+    repository_id: str
+    path: str
+    content_hash: str
+    blob_sha: str
+    commit_sha: str
+    knowledge_revision: int
+    created_at: datetime
 
 
 class StaleRepositoryStateError(RuntimeError):

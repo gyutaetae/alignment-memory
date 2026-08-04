@@ -140,7 +140,7 @@ def render_generated_wiki(artifact: ValidatedAnalysisArtifact) -> str:
         "Edit source records, not this file.",
         "",
         f"- Repository: `{_markdown_text(artifact.event.repository_full_name)}`",
-        f"- Knowledge revision: `{artifact.knowledge_revision}`",
+        f"- Knowledge revision: `{artifact.knowledge_revision + 1}`",
         f"- Source head: `{artifact.event.head_sha}`",
         "",
         "## Contents",

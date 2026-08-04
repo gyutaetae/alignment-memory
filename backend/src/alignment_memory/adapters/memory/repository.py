@@ -1,5 +1,6 @@
 import asyncio
 from collections import defaultdict
+from dataclasses import replace
 from datetime import datetime
 
 from alignment_memory.domain import (
@@ -22,6 +23,7 @@ from alignment_memory.domain import (
     transition_job,
 )
 from alignment_memory.ports.control_plane import (
+    GeneratedArtifactRecord,
     KnowledgeNodeSnapshot,
     MembershipRecord,
     RepositoryRecord,
@@ -55,6 +57,8 @@ class InMemoryRepository:
         self._repository_records: dict[str, RepositoryRecord] = {}
         self._memberships: dict[tuple[str, str], MembershipRecord] = {}
         self._context_passports: dict[str, ContextPassport] = {}
+        self._generated_artifacts: dict[str, GeneratedArtifactRecord] = {}
+        self._generated_artifact_keys: dict[tuple[str, str, str], str] = {}
 
     async def seed_repository_record(self, repository: RepositoryRecord) -> None:
         async with self._lock:
@@ -424,6 +428,74 @@ class InMemoryRepository:
             if versions:
                 snapshots.append(KnowledgeNodeSnapshot(node=node, version=versions[-1]))
         return tuple(sorted(snapshots, key=lambda item: item.node.logical_key))
+
+    async def list_knowledge_node_versions(
+        self,
+        node_id: str,
+    ) -> tuple[KnowledgeNodeVersion, ...]:
+        return self._node_versions[node_id]
+
+    async def advance_repository_revision(
+        self,
+        repository_id: str,
+        *,
+        expected_revision: int,
+        head_sha: str,
+    ) -> RepositoryRecord:
+        async with self._lock:
+            current = self._repository_records.get(repository_id)
+            if current is None:
+                raise KeyError(repository_id)
+            target_revision = expected_revision + 1
+            if (
+                current.knowledge_revision == target_revision
+                and current.baseline_commit_sha == head_sha
+                and current.main_commit_sha == head_sha
+            ):
+                return current
+            if current.knowledge_revision != expected_revision:
+                raise StaleRepositoryStateError("repository knowledge revision is stale")
+            updated = replace(
+                current,
+                baseline_commit_sha=head_sha,
+                main_commit_sha=head_sha,
+                knowledge_revision=target_revision,
+            )
+            self._repository_records[repository_id] = updated
+            return updated
+
+    async def persist_generated_artifact(
+        self,
+        artifact: GeneratedArtifactRecord,
+    ) -> GeneratedArtifactRecord:
+        natural_key = (artifact.repository_id, artifact.path, artifact.content_hash)
+        async with self._lock:
+            existing = self._generated_artifacts.get(artifact.id)
+            existing_id = self._generated_artifact_keys.get(natural_key)
+            if existing is not None:
+                if existing == artifact:
+                    return existing
+                raise AppendOnlyViolation("generated artifact ID already exists")
+            if existing_id is not None:
+                return self._generated_artifacts[existing_id]
+            self._generated_artifacts[artifact.id] = artifact
+            self._generated_artifact_keys[natural_key] = artifact.id
+            return artifact
+
+    async def list_generated_artifacts(
+        self,
+        repository_id: str,
+    ) -> tuple[GeneratedArtifactRecord, ...]:
+        return tuple(
+            sorted(
+                (
+                    artifact
+                    for artifact in self._generated_artifacts.values()
+                    if artifact.repository_id == repository_id
+                ),
+                key=lambda artifact: (artifact.knowledge_revision, artifact.path),
+            )
+        )
 
     async def list_knowledge_edges(
         self,
