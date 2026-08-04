@@ -2,6 +2,7 @@ from datetime import datetime
 from typing import Protocol, runtime_checkable
 
 from alignment_memory.domain import (
+    AiRun,
     Alignment,
     Handshake,
     Job,
@@ -70,6 +71,18 @@ class JobRepository(Protocol):
 
 
 @runtime_checkable
+class AnalysisRunRepository(Protocol):
+    async def persist_ai_run(self, run: AiRun) -> AiRun: ...
+
+    async def get_ai_run(
+        self,
+        job_id: str,
+        input_hash: str,
+        prompt_version: str,
+    ) -> AiRun | None: ...
+
+
+@runtime_checkable
 class CorrectionRepository(Protocol):
     async def append_handshake(self, handshake: Handshake) -> Handshake: ...
 
@@ -85,6 +98,7 @@ class PersistenceRepository(
     SourceRepository,
     KnowledgeRepository,
     JobRepository,
+    AnalysisRunRepository,
     CorrectionRepository,
     Protocol,
 ):

@@ -55,3 +55,9 @@ class EvidenceRole(StrEnum):
     SUPPORTS = "supports"
     CONTRADICTS = "contradicts"
     CORRECTION = "correction"
+
+
+class ValidationStatus(StrEnum):
+    PENDING = "pending"
+    VALID = "valid"
+    INVALID = "invalid"

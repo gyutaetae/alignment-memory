@@ -3,6 +3,7 @@ from collections import defaultdict
 from datetime import datetime
 
 from alignment_memory.domain import (
+    AiRun,
     Alignment,
     AppendOnlyViolation,
     Handshake,
@@ -36,6 +37,8 @@ class InMemoryRepository:
         self._edges: dict[str, KnowledgeEdge] = {}
         self._jobs: dict[str, Job] = {}
         self._job_keys: dict[tuple[str, str], str] = {}
+        self._ai_runs: dict[str, AiRun] = {}
+        self._ai_run_keys: dict[tuple[str, str, str], str] = {}
         self._alignments: dict[str, Alignment] = {}
         self._result_job_ids: dict[str, str] = {}
         self._alignment_keys: dict[tuple[str, int, str, int], str] = {}
@@ -248,6 +251,35 @@ class InMemoryRepository:
     async def get_result_for_job(self, job_id: str) -> Alignment | None:
         result_id = self._result_job_ids.get(job_id)
         return self._alignments.get(result_id) if result_id is not None else None
+
+    async def persist_ai_run(self, run: AiRun) -> AiRun:
+        natural_key = (run.job_id, run.input_hash, run.prompt_version)
+        async with self._lock:
+            if run.job_id not in self._jobs:
+                raise AppendOnlyViolation("AI run requires an existing job")
+            existing = self._ai_runs.get(run.id)
+            existing_id = self._ai_run_keys.get(natural_key)
+            if existing is not None:
+                if existing == run:
+                    return existing
+                raise AppendOnlyViolation("AI run ID already exists with different data")
+            if existing_id is not None:
+                stored = self._ai_runs[existing_id]
+                if stored == run:
+                    return stored
+                raise AppendOnlyViolation("AI run input already exists with different data")
+            self._ai_runs[run.id] = run
+            self._ai_run_keys[natural_key] = run.id
+            return run
+
+    async def get_ai_run(
+        self,
+        job_id: str,
+        input_hash: str,
+        prompt_version: str,
+    ) -> AiRun | None:
+        run_id = self._ai_run_keys.get((job_id, input_hash, prompt_version))
+        return self._ai_runs.get(run_id) if run_id is not None else None
 
     async def append_handshake(self, handshake: Handshake) -> Handshake:
         async with self._lock:

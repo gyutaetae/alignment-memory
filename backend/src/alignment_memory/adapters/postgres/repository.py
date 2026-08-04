@@ -8,9 +8,11 @@ from typing import Any, Self
 from psycopg import AsyncConnection
 from psycopg.errors import UniqueViolation
 from psycopg.rows import dict_row
+from psycopg.types.json import Jsonb
 from psycopg_pool import AsyncConnectionPool
 
 from alignment_memory.domain import (
+    AiRun,
     Alignment,
     AlignmentOutcome,
     AppendOnlyViolation,
@@ -31,6 +33,7 @@ from alignment_memory.domain import (
     OverrideType,
     Source,
     SourceVersion,
+    ValidationStatus,
     transition_job,
 )
 
@@ -593,6 +596,71 @@ class PostgresRepository:
                 else None
             )
 
+    async def persist_ai_run(self, run: AiRun) -> AiRun:
+        async with self._connection_scope() as connection:
+            cursor = await connection.execute(
+                """
+                insert into ai_runs (
+                    id, job_id, provider, requested_model, actual_model,
+                    prompt_version, input_hash, output_json, validation_status,
+                    usage, cost, created_at, completed_at
+                ) values (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                on conflict do nothing
+                returning *
+                """,
+                (
+                    run.id,
+                    run.job_id,
+                    run.provider,
+                    run.requested_model,
+                    run.actual_model,
+                    run.prompt_version,
+                    run.input_hash,
+                    Jsonb(run.output_json),
+                    run.validation_status.value,
+                    Jsonb(run.usage),
+                    run.cost,
+                    run.created_at,
+                    run.completed_at,
+                ),
+            )
+            row = await cursor.fetchone()
+            if row is None:
+                row = await self._fetch_one(
+                    connection,
+                    """
+                    select * from ai_runs
+                    where id = %s or (
+                        job_id = %s and input_hash = %s and prompt_version = %s
+                    )
+                    """,
+                    (run.id, run.job_id, run.input_hash, run.prompt_version),
+                )
+                stored = self._ai_run_from_row(
+                    self._required(row, "AI run conflict disappeared")
+                )
+                if stored == run:
+                    return stored
+                raise AppendOnlyViolation("AI run input already exists with different data")
+            return self._ai_run_from_row(row)
+
+    async def get_ai_run(
+        self,
+        job_id: str,
+        input_hash: str,
+        prompt_version: str,
+    ) -> AiRun | None:
+        async with self._connection_scope() as connection:
+            row = await self._fetch_one(
+                connection,
+                """
+                select * from ai_runs
+                where job_id = %s and input_hash = %s and prompt_version = %s
+                """,
+                (job_id, input_hash, prompt_version),
+            )
+        return self._ai_run_from_row(row) if row is not None else None
+
     async def append_handshake(self, handshake: Handshake) -> Handshake:
         async with self._connection_scope() as connection:
             try:
@@ -850,6 +918,24 @@ class PostgresRepository:
             source_type=row["source_type"],
             external_id=row["external_id"],
             url=row["url"],
+        )
+
+    @staticmethod
+    def _ai_run_from_row(row: Row) -> AiRun:
+        return AiRun(
+            id=str(row["id"]),
+            job_id=str(row["job_id"]),
+            provider=row["provider"],
+            requested_model=row["requested_model"],
+            actual_model=row["actual_model"],
+            prompt_version=row["prompt_version"],
+            input_hash=row["input_hash"],
+            output_json=row["output_json"],
+            validation_status=ValidationStatus(row["validation_status"]),
+            usage=row["usage"],
+            cost=float(row["cost"]) if row["cost"] is not None else None,
+            created_at=row["created_at"],
+            completed_at=row["completed_at"],
         )
 
     @staticmethod

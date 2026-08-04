@@ -10,6 +10,7 @@ from alignment_memory.domain.enums import (
     KnowledgeStatus,
     NodeType,
     OverrideType,
+    ValidationStatus,
 )
 from alignment_memory.domain.errors import DomainValidationError
 
@@ -270,3 +271,34 @@ class Job:
             raise DomainValidationError("failed job requires error_code")
         if self.status is JobStatus.COMPLETED and self.progress != 100:
             raise DomainValidationError("completed job progress must be 100")
+
+
+@dataclass(frozen=True, slots=True, kw_only=True)
+class AiRun:
+    id: str
+    job_id: str
+    provider: str
+    requested_model: str
+    actual_model: str
+    prompt_version: str
+    input_hash: str
+    output_json: dict[str, object]
+    validation_status: ValidationStatus
+    usage: dict[str, int | float]
+    created_at: datetime
+    completed_at: datetime | None = None
+    cost: float | None = None
+
+    def __post_init__(self) -> None:
+        for field_name in (
+            "id",
+            "job_id",
+            "provider",
+            "requested_model",
+            "actual_model",
+            "prompt_version",
+            "input_hash",
+        ):
+            _require_text(getattr(self, field_name), field_name)
+        if self.cost is not None and self.cost < 0:
+            raise DomainValidationError("cost cannot be negative")

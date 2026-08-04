@@ -12,6 +12,12 @@ class Settings(BaseSettings):
 
     app_name: str = "Alignment Memory"
     app_mode: Literal["fixture", "live"] = "fixture"
+    openrouter_api_key: str | None = None
+    openrouter_primary_model: str = "openai/gpt-4.1-mini"
+    openrouter_fallback_model: str = "google/gemini-2.5-flash"
+    openrouter_base_url: str = "https://openrouter.ai/api/v1"
+    openrouter_timeout_seconds: float = 30.0
+    openrouter_max_retries: int = 2
 
     model_config = SettingsConfigDict(
         env_file=_BACKEND_ROOT / ".env",

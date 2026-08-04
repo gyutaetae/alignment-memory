@@ -1,6 +1,7 @@
 """Provider-independent domain types and deterministic policies."""
 
 from alignment_memory.domain.entities import (
+    AiRun,
     Alignment,
     ContextPassport,
     EvidenceReference,
@@ -24,6 +25,7 @@ from alignment_memory.domain.enums import (
     KnowledgeStatus,
     NodeType,
     OverrideType,
+    ValidationStatus,
 )
 from alignment_memory.domain.errors import (
     AppendOnlyViolation,
@@ -49,6 +51,7 @@ from alignment_memory.domain.policies import (
 )
 
 __all__ = [
+    "AiRun",
     "Alignment",
     "AlignmentOutcome",
     "AppendOnlyViolation",
@@ -78,6 +81,7 @@ __all__ = [
     "RepositoryIdentity",
     "Source",
     "SourceVersion",
+    "ValidationStatus",
     "append_knowledge_node_version",
     "append_override",
     "append_source_version",
