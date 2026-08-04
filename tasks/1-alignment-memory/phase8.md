@@ -1,5 +1,12 @@
 # Phase 8: Vertical-slice hardening and demo proof
 
+## Runner execution contract
+
+- 현재 Codex 세션 자체가 `scripts/run_phases.py`가 생성한 Phase 8 구현 세션이다.
+- 다른 runner 또는 Codex child를 실행·검색·감시하지 말고, 이 세션에서 아래 구현과 검증을 직접 수행하라.
+- 상위 orchestrator가 이미 `plan-and-build` 절차를 수행했으므로 스킬을 다시 호출하거나 `scripts/run_phases.py`를 재실행하지 마라.
+- 현재 worktree의 `index.json` 진행 시각 변경은 상위 runner가 만든 정상 상태다. 사용자 변경으로 오인하지 마라.
+
 ## 사전 준비
 
 모든 canonical 문서, 이전 phase 결과, 전체 애플리케이션을 읽어라:
