@@ -24,6 +24,7 @@ class FixtureGitHubAdapter:
         self._allowed_actors = allowed_actors
         self.sync_calls: list[str | None] = []
         self.pr_calls: list[tuple[int, str]] = []
+        self.dispatch_calls: list[tuple[str, str]] = []
 
     async def actor_is_allowed(
         self,
@@ -68,3 +69,10 @@ class FixtureGitHubAdapter:
     async def _require_actor(self, actor_login: str | None) -> None:
         if actor_login is not None and actor_login not in self._allowed_actors:
             raise GitHubPermissionError()
+
+    async def dispatch_sync(
+        self,
+        repository: GitHubRepositoryRef,
+        job_id: str,
+    ) -> None:
+        self.dispatch_calls.append((repository.repository_id, job_id))

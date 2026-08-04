@@ -133,3 +133,9 @@ class GitHubPort(Protocol):
         repository: GitHubRepositoryRef,
         actor_login: str,
     ) -> bool: ...
+
+    async def dispatch_sync(
+        self,
+        repository: GitHubRepositoryRef,
+        job_id: str,
+    ) -> None: ...

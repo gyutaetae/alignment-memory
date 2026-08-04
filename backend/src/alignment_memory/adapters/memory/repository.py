@@ -6,6 +6,7 @@ from alignment_memory.domain import (
     AiRun,
     Alignment,
     AppendOnlyViolation,
+    ContextPassport,
     Handshake,
     Job,
     JobStatus,
@@ -15,9 +16,16 @@ from alignment_memory.domain import (
     Override,
     Source,
     SourceVersion,
+    ValidationStatus,
     append_knowledge_node_version,
     append_source_version,
     transition_job,
+)
+from alignment_memory.ports.control_plane import (
+    KnowledgeNodeSnapshot,
+    MembershipRecord,
+    RepositoryRecord,
+    StaleRepositoryStateError,
 )
 
 
@@ -44,6 +52,24 @@ class InMemoryRepository:
         self._alignment_keys: dict[tuple[str, int, str, int], str] = {}
         self._handshakes: dict[str, Handshake] = {}
         self._overrides: dict[str, Override] = {}
+        self._repository_records: dict[str, RepositoryRecord] = {}
+        self._memberships: dict[tuple[str, str], MembershipRecord] = {}
+        self._context_passports: dict[str, ContextPassport] = {}
+
+    async def seed_repository_record(self, repository: RepositoryRecord) -> None:
+        async with self._lock:
+            existing = self._repository_records.get(repository.id)
+            if existing is not None and existing != repository:
+                raise AppendOnlyViolation("repository fixture already exists with different data")
+            self._repository_records[repository.id] = repository
+
+    async def seed_membership(self, membership: MembershipRecord) -> None:
+        key = (membership.repository_id, membership.profile_id)
+        async with self._lock:
+            existing = self._memberships.get(key)
+            if existing is not None and existing != membership:
+                raise AppendOnlyViolation("membership fixture already exists with different data")
+            self._memberships[key] = membership
 
     async def add_source(self, source: Source) -> Source:
         natural_key = (source.repository_id, source.source_type, source.external_id)
@@ -252,6 +278,31 @@ class InMemoryRepository:
         result_id = self._result_job_ids.get(job_id)
         return self._alignments.get(result_id) if result_id is not None else None
 
+    async def get_alignment(self, alignment_id: str) -> Alignment | None:
+        return self._alignments.get(alignment_id)
+
+    async def list_jobs(self, repository_id: str) -> tuple[Job, ...]:
+        return tuple(
+            sorted(
+                (job for job in self._jobs.values() if job.repository_id == repository_id),
+                key=lambda job: (job.created_at, job.id),
+                reverse=True,
+            )
+        )
+
+    async def list_alignments(self, repository_id: str) -> tuple[Alignment, ...]:
+        return tuple(
+            sorted(
+                (
+                    alignment
+                    for alignment in self._alignments.values()
+                    if alignment.repository_id == repository_id
+                ),
+                key=lambda alignment: (alignment.created_at, alignment.id),
+                reverse=True,
+            )
+        )
+
     async def persist_ai_run(self, run: AiRun) -> AiRun:
         natural_key = (run.job_id, run.input_hash, run.prompt_version)
         async with self._lock:
@@ -320,6 +371,224 @@ class InMemoryRepository:
                 key=lambda item: (item.created_at, item.id),
             )
         )
+
+    async def list_repositories(self, profile_id: str) -> tuple[RepositoryRecord, ...]:
+        repository_ids = {
+            membership.repository_id
+            for membership in self._memberships.values()
+            if membership.profile_id == profile_id and membership.active
+        }
+        return tuple(
+            sorted(
+                (
+                    repository
+                    for repository in self._repository_records.values()
+                    if repository.id in repository_ids
+                ),
+                key=lambda repository: (repository.owner.lower(), repository.name.lower()),
+            )
+        )
+
+    async def list_installation_repositories(
+        self,
+        profile_id: str,
+        github_installation_id: int,
+    ) -> tuple[RepositoryRecord, ...]:
+        repositories = await self.list_repositories(profile_id)
+        return tuple(
+            repository
+            for repository in repositories
+            if repository.github_installation_id == github_installation_id
+        )
+
+    async def get_repository_record(self, repository_id: str) -> RepositoryRecord | None:
+        return self._repository_records.get(repository_id)
+
+    async def get_membership(
+        self,
+        repository_id: str,
+        profile_id: str,
+    ) -> MembershipRecord | None:
+        membership = self._memberships.get((repository_id, profile_id))
+        return membership if membership is not None and membership.active else None
+
+    async def list_knowledge_snapshots(
+        self,
+        repository_id: str,
+    ) -> tuple[KnowledgeNodeSnapshot, ...]:
+        snapshots: list[KnowledgeNodeSnapshot] = []
+        for node in self._nodes.values():
+            if node.repository_id != repository_id:
+                continue
+            versions = self._node_versions[node.id]
+            if versions:
+                snapshots.append(KnowledgeNodeSnapshot(node=node, version=versions[-1]))
+        return tuple(sorted(snapshots, key=lambda item: item.node.logical_key))
+
+    async def list_knowledge_edges(
+        self,
+        repository_id: str,
+    ) -> tuple[KnowledgeEdge, ...]:
+        return tuple(
+            sorted(
+                (
+                    edge
+                    for edge in self._edges.values()
+                    if edge.repository_id == repository_id and edge.valid_to_revision is None
+                ),
+                key=lambda edge: (edge.from_node_id, edge.to_node_id, edge.relation_type),
+            )
+        )
+
+    async def count_sources(self, repository_id: str) -> int:
+        return sum(
+            source.repository_id == repository_id for source in self._sources.values()
+        )
+
+    async def get_source_version_with_source(
+        self,
+        source_version_id: str,
+    ) -> tuple[Source, SourceVersion] | None:
+        version = self._source_version_ids.get(source_version_id)
+        if version is None:
+            return None
+        source = self._sources.get(version.source_id)
+        return (source, version) if source is not None else None
+
+    async def append_context_passport(
+        self,
+        passport: ContextPassport,
+    ) -> ContextPassport:
+        async with self._lock:
+            if passport.analysis_id not in self._alignments:
+                raise AppendOnlyViolation("context passport requires an existing alignment")
+            existing = self._context_passports.get(passport.id)
+            if existing is not None:
+                if existing == passport:
+                    return existing
+                raise AppendOnlyViolation("context passport ID already exists")
+            natural = next(
+                (
+                    item
+                    for item in self._context_passports.values()
+                    if item.analysis_id == passport.analysis_id
+                    and item.profile_id == passport.profile_id
+                    and item.language == passport.language
+                    and item.ai_run_id == passport.ai_run_id
+                ),
+                None,
+            )
+            if natural is not None:
+                return natural
+            self._context_passports[passport.id] = passport
+            return passport
+
+    async def get_context_passport(
+        self,
+        alignment_id: str,
+        profile_id: str,
+        language: str | None = None,
+    ) -> ContextPassport | None:
+        candidates = [
+            passport
+            for passport in self._context_passports.values()
+            if passport.analysis_id == alignment_id
+            and passport.profile_id == profile_id
+            and (language is None or passport.language == language)
+        ]
+        return max(candidates, key=lambda item: (item.created_at, item.id), default=None)
+
+    async def repository_id_for_target(
+        self,
+        target_type: str,
+        target_id: str,
+    ) -> str | None:
+        if target_type == "alignment":
+            alignment = self._alignments.get(target_id)
+            return alignment.repository_id if alignment is not None else None
+        if target_type == "finding":
+            alignment = next(
+                (
+                    item
+                    for item in self._alignments.values()
+                    if any(finding.id == target_id for finding in item.findings)
+                ),
+                None,
+            )
+            return alignment.repository_id if alignment is not None else None
+        if target_type == "knowledge_node":
+            node = self._nodes.get(target_id)
+            return node.repository_id if node is not None else None
+        if target_type == "knowledge_node_version":
+            version = self._node_version_ids.get(target_id)
+            node = self._nodes.get(version.node_id) if version is not None else None
+            return node.repository_id if node is not None else None
+        return None
+
+    async def persist_worker_result(
+        self,
+        job_id: str,
+        run: AiRun,
+        alignment: Alignment,
+        *,
+        expected_head_sha: str,
+        expected_main_sha: str | None,
+    ) -> Alignment:
+        async with self._lock:
+            job = self._jobs.get(job_id)
+            repository = self._repository_records.get(alignment.repository_id)
+            if job is None:
+                raise KeyError(job_id)
+            if repository is None:
+                raise KeyError(alignment.repository_id)
+            if job.repository_id != alignment.repository_id or run.job_id != job_id:
+                raise AppendOnlyViolation("worker result provenance does not match its job")
+            if run.validation_status is not ValidationStatus.VALID:
+                raise AppendOnlyViolation("worker result must be validated")
+            if job.head_sha != expected_head_sha or alignment.head_sha != expected_head_sha:
+                raise StaleRepositoryStateError("worker head SHA is stale")
+            if (
+                expected_main_sha is not None
+                and repository.main_commit_sha != expected_main_sha
+            ):
+                raise StaleRepositoryStateError("repository main SHA is stale")
+
+            run_key = (run.job_id, run.input_hash, run.prompt_version)
+            existing_run_id = self._ai_run_keys.get(run_key)
+            if existing_run_id is not None:
+                existing_run = self._ai_runs[existing_run_id]
+                if existing_run != run:
+                    raise AppendOnlyViolation("AI run input already exists with different data")
+            elif run.id in self._ai_runs:
+                if self._ai_runs[run.id] != run:
+                    raise AppendOnlyViolation("AI run ID already exists with different data")
+            else:
+                self._ai_runs[run.id] = run
+                self._ai_run_keys[run_key] = run.id
+
+            natural_key = (
+                alignment.repository_id,
+                alignment.pr_number,
+                alignment.head_sha,
+                alignment.knowledge_revision,
+            )
+            result_id = self._result_job_ids.get(job_id)
+            natural_result_id = self._alignment_keys.get(natural_key)
+            existing_id = result_id or natural_result_id
+            if existing_id is not None:
+                existing = self._alignments[existing_id]
+                if existing != alignment:
+                    raise AppendOnlyViolation(
+                        "validated result already exists with different data"
+                    )
+                self._result_job_ids[job_id] = existing.id
+                return existing
+            if alignment.id in self._alignments:
+                raise AppendOnlyViolation("alignment ID already exists with different data")
+            self._alignments[alignment.id] = alignment
+            self._alignment_keys[natural_key] = alignment.id
+            self._result_job_ids[job_id] = alignment.id
+            return alignment
 
     @staticmethod
     def _same_node_identity(left: KnowledgeNode, right: KnowledgeNode) -> bool:

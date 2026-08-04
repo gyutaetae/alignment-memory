@@ -1,5 +1,12 @@
 """Interfaces for external capabilities."""
 
+from alignment_memory.ports.control_plane import (
+    ControlPlaneRepository,
+    KnowledgeNodeSnapshot,
+    MembershipRecord,
+    RepositoryRecord,
+    StaleRepositoryStateError,
+)
 from alignment_memory.ports.github import (
     ALLOWED_ACTOR_ASSOCIATIONS,
     ActorAssociation,
@@ -44,6 +51,7 @@ __all__ = [
     "AnalysisRequest",
     "AnalysisRunRepository",
     "CollectedSource",
+    "ControlPlaneRepository",
     "CorrectionRepository",
     "GitHubAdapterError",
     "GitHubAuthenticationError",
@@ -55,6 +63,7 @@ __all__ = [
     "GitHubSourceType",
     "GitHubTimeoutError",
     "JobRepository",
+    "KnowledgeNodeSnapshot",
     "KnowledgeRepository",
     "LlmAdapterError",
     "LlmAnalysis",
@@ -64,8 +73,11 @@ __all__ = [
     "LlmTimeoutError",
     "LlmUsage",
     "LlmValidationError",
+    "MembershipRecord",
     "PersistenceRepository",
+    "RepositoryRecord",
     "SourceBatch",
     "SourceRepository",
+    "StaleRepositoryStateError",
     "validate_analysis_result_evidence",
 ]

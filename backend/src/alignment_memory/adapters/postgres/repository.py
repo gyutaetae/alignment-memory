@@ -16,6 +16,7 @@ from alignment_memory.domain import (
     Alignment,
     AlignmentOutcome,
     AppendOnlyViolation,
+    ContextPassport,
     EvidenceReference,
     EvidenceRole,
     Finding,
@@ -35,6 +36,12 @@ from alignment_memory.domain import (
     SourceVersion,
     ValidationStatus,
     transition_job,
+)
+from alignment_memory.ports.control_plane import (
+    KnowledgeNodeSnapshot,
+    MembershipRecord,
+    RepositoryRecord,
+    StaleRepositoryStateError,
 )
 
 Row = dict[str, Any]
@@ -596,6 +603,45 @@ class PostgresRepository:
                 else None
             )
 
+    async def get_alignment(self, alignment_id: str) -> Alignment | None:
+        async with self._connection_scope() as connection:
+            row = await self._fetch_one(
+                connection,
+                "select * from alignment_analyses where id = %s",
+                (alignment_id,),
+            )
+            return (
+                await self._alignment_from_row(connection, row)
+                if row is not None
+                else None
+            )
+
+    async def list_jobs(self, repository_id: str) -> tuple[Job, ...]:
+        async with self._connection_scope() as connection:
+            rows = await self._fetch_all(
+                connection,
+                """
+                select * from sync_jobs
+                where repository_id = %s
+                order by created_at desc, id
+                """,
+                (repository_id,),
+            )
+        return tuple(self._job_from_row(row) for row in rows)
+
+    async def list_alignments(self, repository_id: str) -> tuple[Alignment, ...]:
+        async with self._connection_scope() as connection:
+            rows = await self._fetch_all(
+                connection,
+                """
+                select * from alignment_analyses
+                where repository_id = %s
+                order by created_at desc, id
+                """,
+                (repository_id,),
+            )
+            return tuple([await self._alignment_from_row(connection, row) for row in rows])
+
     async def persist_ai_run(self, run: AiRun) -> AiRun:
         async with self._connection_scope() as connection:
             cursor = await connection.execute(
@@ -735,6 +781,309 @@ class PostgresRepository:
                 (target_type, target_id),
             )
         return tuple(self._override_from_row(row) for row in rows)
+
+    async def list_repositories(self, profile_id: str) -> tuple[RepositoryRecord, ...]:
+        async with self._connection_scope() as connection:
+            rows = await self._fetch_all(
+                connection,
+                """
+                select repository.*, installation.github_installation_id
+                from repositories repository
+                join github_installations installation
+                  on installation.id = repository.installation_id
+                join repository_memberships membership
+                  on membership.repository_id = repository.id
+                where membership.profile_id = %s and membership.active
+                order by lower(repository.owner), lower(repository.name)
+                """,
+                (profile_id,),
+            )
+        return tuple(self._repository_record_from_row(row) for row in rows)
+
+    async def list_installation_repositories(
+        self,
+        profile_id: str,
+        github_installation_id: int,
+    ) -> tuple[RepositoryRecord, ...]:
+        repositories = await self.list_repositories(profile_id)
+        return tuple(
+            repository
+            for repository in repositories
+            if repository.github_installation_id == github_installation_id
+        )
+
+    async def get_repository_record(self, repository_id: str) -> RepositoryRecord | None:
+        async with self._connection_scope() as connection:
+            row = await self._fetch_one(
+                connection,
+                """
+                select repository.*, installation.github_installation_id
+                from repositories repository
+                join github_installations installation
+                  on installation.id = repository.installation_id
+                where repository.id = %s
+                """,
+                (repository_id,),
+            )
+        return self._repository_record_from_row(row) if row is not None else None
+
+    async def get_membership(
+        self,
+        repository_id: str,
+        profile_id: str,
+    ) -> MembershipRecord | None:
+        async with self._connection_scope() as connection:
+            row = await self._fetch_one(
+                connection,
+                """
+                select repository_id, profile_id, github_permission, active
+                from repository_memberships
+                where repository_id = %s and profile_id = %s and active
+                """,
+                (repository_id, profile_id),
+            )
+        return self._membership_from_row(row) if row is not None else None
+
+    async def list_knowledge_snapshots(
+        self,
+        repository_id: str,
+    ) -> tuple[KnowledgeNodeSnapshot, ...]:
+        async with self._connection_scope() as connection:
+            rows = await self._fetch_all(
+                connection,
+                """
+                select node.*
+                from knowledge_nodes node
+                where node.repository_id = %s and node.current_version_id is not null
+                order by node.logical_key
+                """,
+                (repository_id,),
+            )
+            snapshots: list[KnowledgeNodeSnapshot] = []
+            for row in rows:
+                version_row = await self._fetch_one(
+                    connection,
+                    "select * from knowledge_node_versions where id = %s",
+                    (row["current_version_id"],),
+                )
+                if version_row is None:
+                    continue
+                snapshots.append(
+                    KnowledgeNodeSnapshot(
+                        node=self._knowledge_node_from_row(row),
+                        version=await self._knowledge_version_from_row(
+                            connection,
+                            version_row,
+                        ),
+                    )
+                )
+        return tuple(snapshots)
+
+    async def list_knowledge_edges(
+        self,
+        repository_id: str,
+    ) -> tuple[KnowledgeEdge, ...]:
+        async with self._connection_scope() as connection:
+            rows = await self._fetch_all(
+                connection,
+                """
+                select * from knowledge_edges
+                where repository_id = %s and valid_to_revision is null
+                order by from_node_id, to_node_id, relation_type
+                """,
+                (repository_id,),
+            )
+            edges = [
+                KnowledgeEdge(
+                    id=str(row["id"]),
+                    repository_id=str(row["repository_id"]),
+                    from_node_id=str(row["from_node_id"]),
+                    to_node_id=str(row["to_node_id"]),
+                    relation_type=row["relation_type"],
+                    valid_from_revision=row["valid_from_revision"],
+                    valid_to_revision=row["valid_to_revision"],
+                    evidence=await self._evidence_for_target(
+                        connection,
+                        "knowledge_edge",
+                        str(row["id"]),
+                    ),
+                )
+                for row in rows
+            ]
+        return tuple(edges)
+
+    async def count_sources(self, repository_id: str) -> int:
+        async with self._connection_scope() as connection:
+            row = await self._fetch_one(
+                connection,
+                "select count(*) as source_count from sources where repository_id = %s",
+                (repository_id,),
+            )
+        return int(row["source_count"]) if row is not None else 0
+
+    async def get_source_version_with_source(
+        self,
+        source_version_id: str,
+    ) -> tuple[Source, SourceVersion] | None:
+        async with self._connection_scope() as connection:
+            version_row = await self._fetch_one(
+                connection,
+                "select * from source_versions where id = %s",
+                (source_version_id,),
+            )
+            if version_row is None:
+                return None
+            source_row = await self._fetch_one(
+                connection,
+                "select * from sources where id = %s",
+                (version_row["source_id"],),
+            )
+        if source_row is None:
+            return None
+        return (
+            self._source_from_row(source_row),
+            self._source_version_from_row(version_row),
+        )
+
+    async def append_context_passport(
+        self,
+        passport: ContextPassport,
+    ) -> ContextPassport:
+        async with self._connection_scope() as connection:
+            cursor = await connection.execute(
+                """
+                insert into context_passports (
+                    id, analysis_id, profile_id, language, content,
+                    source_version_ids, ambiguities, ai_run_id, created_at
+                ) values (%s, %s, %s, %s, %s, %s, %s, %s, %s)
+                on conflict do nothing
+                returning *
+                """,
+                (
+                    passport.id,
+                    passport.analysis_id,
+                    passport.profile_id,
+                    passport.language,
+                    passport.content,
+                    list(passport.source_version_ids),
+                    list(passport.ambiguities),
+                    passport.ai_run_id,
+                    passport.created_at,
+                ),
+            )
+            row = await cursor.fetchone()
+            if row is None:
+                row = await self._fetch_one(
+                    connection,
+                    """
+                    select * from context_passports
+                    where id = %s or (
+                        analysis_id = %s and profile_id = %s
+                        and language = %s and ai_run_id = %s
+                    )
+                    """,
+                    (
+                        passport.id,
+                        passport.analysis_id,
+                        passport.profile_id,
+                        passport.language,
+                        passport.ai_run_id,
+                    ),
+                )
+            stored = self._context_passport_from_row(
+                self._required(row, "context passport conflict disappeared")
+            )
+            if stored.id == passport.id and stored != passport:
+                raise AppendOnlyViolation("context passport ID already exists")
+            return stored
+
+    async def get_context_passport(
+        self,
+        alignment_id: str,
+        profile_id: str,
+        language: str | None = None,
+    ) -> ContextPassport | None:
+        async with self._connection_scope() as connection:
+            row = await self._fetch_one(
+                connection,
+                """
+                select * from context_passports
+                where analysis_id = %s and profile_id = %s
+                  and (%s::text is null or language = %s::text)
+                order by created_at desc, id desc
+                limit 1
+                """,
+                (alignment_id, profile_id, language, language),
+            )
+        return self._context_passport_from_row(row) if row is not None else None
+
+    async def repository_id_for_target(
+        self,
+        target_type: str,
+        target_id: str,
+    ) -> str | None:
+        queries = {
+            "alignment": "select repository_id from alignment_analyses where id = %s",
+            "finding": """
+                select analysis.repository_id
+                from alignment_findings finding
+                join alignment_analyses analysis on analysis.id = finding.analysis_id
+                where finding.id = %s
+            """,
+            "knowledge_node": "select repository_id from knowledge_nodes where id = %s",
+            "knowledge_node_version": """
+                select node.repository_id
+                from knowledge_node_versions version
+                join knowledge_nodes node on node.id = version.node_id
+                where version.id = %s
+            """,
+        }
+        query = queries.get(target_type)
+        if query is None:
+            return None
+        async with self._connection_scope() as connection:
+            row = await self._fetch_one(connection, query, (target_id,))
+        return str(row["repository_id"]) if row is not None else None
+
+    async def persist_worker_result(
+        self,
+        job_id: str,
+        run: AiRun,
+        alignment: Alignment,
+        *,
+        expected_head_sha: str,
+        expected_main_sha: str | None,
+    ) -> Alignment:
+        async with self.transaction() as transaction:
+            connection = transaction._bound_connection()
+            job_row = await self._fetch_one(
+                connection,
+                "select * from sync_jobs where id = %s for update",
+                (job_id,),
+            )
+            if job_row is None:
+                raise KeyError(job_id)
+            repository_row = await self._fetch_one(
+                connection,
+                "select * from repositories where id = %s for update",
+                (alignment.repository_id,),
+            )
+            if repository_row is None:
+                raise KeyError(alignment.repository_id)
+            job = self._job_from_row(job_row)
+            if job.repository_id != alignment.repository_id or run.job_id != job_id:
+                raise AppendOnlyViolation("worker result provenance does not match its job")
+            if run.validation_status is not ValidationStatus.VALID:
+                raise AppendOnlyViolation("worker result must be validated")
+            if job.head_sha != expected_head_sha or alignment.head_sha != expected_head_sha:
+                raise StaleRepositoryStateError("worker head SHA is stale")
+            if (
+                expected_main_sha is not None
+                and repository_row["main_commit_sha"] != expected_main_sha
+            ):
+                raise StaleRepositoryStateError("repository main SHA is stale")
+            await transaction.persist_ai_run(run)
+            return await transaction.persist_validated_result(job_id, alignment)
 
     def _bound_connection(self) -> Connection:
         if self._connection is None:
@@ -1007,6 +1356,43 @@ class PostgresRepository:
                 if row["created_node_version_id"]
                 else None
             ),
+            created_at=row["created_at"],
+        )
+
+    @staticmethod
+    def _repository_record_from_row(row: Row) -> RepositoryRecord:
+        return RepositoryRecord(
+            id=str(row["id"]),
+            github_repository_id=row["github_repository_id"],
+            github_installation_id=row["github_installation_id"],
+            owner=row["owner"],
+            name=row["name"],
+            default_branch=row["default_branch"],
+            baseline_commit_sha=row["baseline_commit_sha"],
+            main_commit_sha=row["main_commit_sha"],
+            knowledge_revision=row["knowledge_revision"],
+        )
+
+    @staticmethod
+    def _membership_from_row(row: Row) -> MembershipRecord:
+        return MembershipRecord(
+            repository_id=str(row["repository_id"]),
+            profile_id=str(row["profile_id"]),
+            github_permission=str(row["github_permission"]),
+            active=row["active"],
+        )
+
+    @staticmethod
+    def _context_passport_from_row(row: Row) -> ContextPassport:
+        return ContextPassport(
+            id=str(row["id"]),
+            analysis_id=str(row["analysis_id"]),
+            profile_id=str(row["profile_id"]),
+            language=row["language"],
+            content=row["content"],
+            source_version_ids=tuple(str(item) for item in row["source_version_ids"]),
+            ambiguities=tuple(row["ambiguities"]),
+            ai_run_id=str(row["ai_run_id"]),
             created_at=row["created_at"],
         )
 

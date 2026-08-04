@@ -47,6 +47,7 @@ class GitHubAdapterConfig:
     timeout_seconds: float = 15.0
     max_retries: int = 2
     max_retry_delay_seconds: float = 30.0
+    sync_workflow: str = "alignment-analyze.yml"
 
 
 @dataclass(frozen=True, slots=True, kw_only=True)
@@ -177,6 +178,24 @@ class GitHubAppAdapter:
         sources = [self._pull_request_source(repository, pull)]
         sources.append(await self._pull_request_diff_source(repository, pull))
         return SourceBatch(sources=tuple(sources), baseline_commit_sha=head_sha)
+
+    async def dispatch_sync(
+        self,
+        repository: GitHubRepositoryRef,
+        job_id: str,
+    ) -> None:
+        if not job_id.strip():
+            raise ValueError("job_id is required")
+        await self._request(
+            repository,
+            "POST",
+            f"/repos/{repository.owner}/{repository.name}/actions/workflows/"
+            f"{quote(self._config.sync_workflow, safe='')}/dispatches",
+            json_body={
+                "ref": repository.default_branch,
+                "inputs": {"jobId": job_id},
+            },
+        )
 
     async def _collect_initial_sources(
         self,
@@ -523,6 +542,7 @@ class GitHubAppAdapter:
         *,
         params: Mapping[str, str | int] | None = None,
         accept: str = "application/vnd.github+json",
+        json_body: Mapping[str, object] | None = None,
     ) -> httpx.Response:
         token = await self._installation_access_token(repository.installation_id)
         try:
@@ -532,6 +552,7 @@ class GitHubAppAdapter:
                 url,
                 params=params,
                 accept=accept,
+                json_body=json_body,
             )
         except GitHubAuthenticationError:
             if self._static_installation_token is not None:
@@ -544,6 +565,7 @@ class GitHubAppAdapter:
                 url,
                 params=params,
                 accept=accept,
+                json_body=json_body,
             )
 
     async def _installation_request(
@@ -554,6 +576,7 @@ class GitHubAppAdapter:
         *,
         params: Mapping[str, str | int] | None,
         accept: str,
+        json_body: Mapping[str, object] | None,
     ) -> httpx.Response:
         return await self._request_with_retry(
             method,
@@ -564,6 +587,7 @@ class GitHubAppAdapter:
                 "X-GitHub-Api-Version": self._config.api_version,
             },
             params=params,
+            json_body=json_body,
         )
 
     async def _request_with_retry(
@@ -630,6 +654,7 @@ class GitHubAppAdapter:
             },
             json_body={
                 "permissions": {
+                    "actions": "write",
                     "contents": "read",
                     "issues": "read",
                     "pull_requests": "read",
