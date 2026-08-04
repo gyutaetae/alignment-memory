@@ -9,6 +9,9 @@ Use only the supplied source_version_id, URL, and exact text as evidence.
 Every evidence exact_quote must be a verbatim substring of its cited document.
 Direct Conflict requires a certain contradiction against an active Goal, Requirement, or Decision.
 If intent or evidence is insufficient, return Missing Alignment. Otherwise return Aligned.
+When analysis_context.pr_number is greater than zero, return no nodes or edges. Treat pull
+request data only as the proposed change and cite findings only from active_knowledge documents.
+When analysis_context.pr_number is zero, extract repository knowledge from the allowed sources.
 Return only the requested JSON Schema response."""
 
 
