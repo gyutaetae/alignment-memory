@@ -1,6 +1,18 @@
 __pycache__/
 *.py[cod]
 .DS_Store
+.env
+.env.*
+!.env.example
+.pytest_cache/
+.ruff_cache/
+.coverage
+
+backend/.venv/
+apps/web/node_modules/
+apps/web/dist/
+apps/web/coverage/
+apps/web/.npm-cache/
 
 persuasion-data/runs/*
 !persuasion-data/runs/.gitkeep

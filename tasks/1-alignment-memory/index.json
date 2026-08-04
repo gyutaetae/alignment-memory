@@ -15,8 +15,9 @@
     {
       "phase": 1,
       "name": "scaffold",
-      "status": "pending",
-      "started_at": "2026-08-04T01:37:53+0900"
+      "status": "completed",
+      "started_at": "2026-08-04T01:37:53+0900",
+      "completed_at": "2026-08-04T12:12:08+0900"
     },
     {
       "phase": 2,
