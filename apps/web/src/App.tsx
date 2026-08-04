@@ -1,30 +1,30 @@
-import { Navigate, Route, Routes } from "react-router-dom";
+import { Navigate, Outlet, Route, Routes } from "react-router-dom";
 
-import styles from "./App.module.css";
+import { AlignmentDetailScreen } from "./alignment/AlignmentDetailScreen";
+import { ProjectMemoryScreen } from "./dashboard/ProjectMemoryScreen";
+import { KnowledgeGraphScreen } from "./graph/KnowledgeGraphScreen";
+import { ConnectScreen } from "./repositories/ConnectScreen";
+import { AppShell } from "./shared/components/AppShell";
 
-function ProductShell() {
+function ProductLayout() {
   return (
-    <div className={styles.shell}>
-      <header className={styles.header}>
-        <span className={styles.mark} aria-hidden="true" />
-        <span>Alignment Memory</span>
-      </header>
-      <main className={styles.main}>
-        <p className={styles.eyebrow}>Project memory</p>
-        <h1>Keep decisions and delivery aligned.</h1>
-        <p className={styles.description}>
-          Repository context will appear here after a project is connected.
-        </p>
-      </main>
-    </div>
+    <AppShell>
+      <Outlet />
+    </AppShell>
   );
 }
 
 export function App() {
   return (
     <Routes>
-      <Route path="/" element={<ProductShell />} />
-      <Route path="*" element={<Navigate to="/" replace />} />
+      <Route element={<ProductLayout />}>
+        <Route path="/" element={<Navigate to="/memory" replace />} />
+        <Route path="/connect" element={<ConnectScreen />} />
+        <Route path="/memory" element={<ProjectMemoryScreen />} />
+        <Route path="/alignments/:alignmentId" element={<AlignmentDetailScreen />} />
+        <Route path="/graph" element={<KnowledgeGraphScreen />} />
+        <Route path="*" element={<Navigate to="/memory" replace />} />
+      </Route>
     </Routes>
   );
 }

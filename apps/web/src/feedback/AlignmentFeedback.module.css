@@ -1,0 +1,180 @@
+.feedback {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+}
+
+.form {
+  display: flex;
+  flex-direction: column;
+  padding: 1.3rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-large);
+  background: var(--surface);
+  box-shadow: var(--shadow-panel);
+}
+
+.overrideForm {
+  border-style: double;
+  border-width: 3px;
+}
+
+.formHeader {
+  display: flex;
+  align-items: center;
+  gap: 0.7rem;
+}
+
+.formIcon {
+  display: grid;
+  width: 2rem;
+  height: 2rem;
+  place-items: center;
+  border: 1px solid var(--border-strong);
+  border-radius: 50%;
+  color: var(--accent);
+  font-weight: 850;
+}
+
+.formHeader p {
+  margin: 0 0 0.2rem;
+  color: var(--accent);
+  font-size: 0.62rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.formHeader h2 {
+  margin: 0;
+  color: var(--ink-strong);
+  font-size: 1rem;
+}
+
+.description {
+  min-height: 2.5rem;
+  margin: 0.8rem 0;
+  color: var(--ink-muted);
+  font-size: 0.76rem;
+  line-height: 1.5;
+}
+
+.form fieldset {
+  display: grid;
+  gap: 0.45rem;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.form legend,
+.field > span {
+  margin-bottom: 0.45rem;
+  color: var(--ink-muted);
+  font-size: 0.67rem;
+  font-weight: 750;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.form fieldset label {
+  display: grid;
+  align-items: center;
+  grid-template-columns: 1rem 1fr;
+  gap: 0.65rem;
+  padding: 0.65rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-small);
+  cursor: pointer;
+}
+
+.form fieldset input {
+  margin: 0;
+  accent-color: var(--accent);
+}
+
+.form fieldset label > span {
+  display: grid;
+  gap: 0.15rem;
+}
+
+.form fieldset strong {
+  color: var(--ink-strong);
+  font-size: 0.75rem;
+}
+
+.form fieldset small {
+  color: var(--ink-muted);
+  font-size: 0.66rem;
+}
+
+.field {
+  display: grid;
+  margin-top: 0.8rem;
+}
+
+.field > span > strong {
+  margin-left: 0.4rem;
+  color: var(--accent);
+  font-size: 0.62rem;
+}
+
+.field textarea,
+.field select {
+  width: 100%;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-small);
+  background: var(--surface);
+  color: var(--ink-strong);
+}
+
+.field textarea {
+  resize: vertical;
+  padding: 0.65rem;
+}
+
+.field select {
+  min-height: 2.45rem;
+  padding: 0 0.65rem;
+}
+
+.primary,
+.secondary {
+  min-height: 2.5rem;
+  margin-top: auto;
+  padding: 0 0.9rem;
+  border-radius: var(--radius-small);
+  cursor: pointer;
+  font-size: 0.75rem;
+  font-weight: 800;
+}
+
+.primary {
+  border: 0;
+  background: var(--accent);
+  color: var(--surface);
+}
+
+.secondary {
+  border: 1px solid var(--accent);
+  background: var(--surface);
+  color: var(--accent);
+}
+
+.primary:disabled,
+.secondary:disabled {
+  cursor: not-allowed;
+  opacity: 0.45;
+}
+
+.error,
+.success {
+  color: var(--ink-strong);
+  font-size: 0.7rem;
+  font-weight: 700;
+}
+
+.error::first-letter,
+.success::first-letter {
+  color: var(--accent);
+}

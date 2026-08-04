@@ -1,0 +1,74 @@
+.panel {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 2rem;
+  padding: 1.35rem 1.5rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-large);
+  background: var(--surface);
+  box-shadow: var(--shadow-panel);
+}
+
+.panel > div {
+  display: grid;
+  grid-template-columns: 2.2rem 1fr;
+  column-gap: 0.8rem;
+}
+
+.panel h2 {
+  margin: 0;
+  color: var(--ink-strong);
+  font-size: 1rem;
+}
+
+.panel p {
+  grid-column: 2;
+  margin: 0.4rem 0 0;
+  color: var(--ink-muted);
+  font-size: 0.84rem;
+  line-height: 1.5;
+}
+
+.stepIcon {
+  display: grid;
+  width: 2.2rem;
+  height: 2.2rem;
+  grid-row: span 2;
+  place-items: center;
+  border: 1px solid var(--border-strong);
+  border-radius: 50%;
+  color: var(--accent);
+  font-size: 0.82rem;
+  font-weight: 800;
+}
+
+.primary,
+.connected {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  min-height: 2.45rem;
+  padding: 0 0.9rem;
+  border-radius: var(--radius-small);
+  font-size: 0.8rem;
+  font-weight: 750;
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.primary {
+  border: 0;
+  background: var(--accent);
+  color: var(--surface);
+  cursor: pointer;
+}
+
+.connected {
+  border: 1px solid var(--border-strong);
+  color: var(--ink-strong);
+}
+
+.connected > span {
+  color: var(--accent);
+}
