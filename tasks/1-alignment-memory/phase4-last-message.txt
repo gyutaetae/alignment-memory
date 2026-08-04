@@ -1,0 +1,14 @@
+Phase 4 완료했습니다.
+
+- GitHub App 수집·pagination·증분 sync·actor 검증 구현
+- OpenRouter schema·primary/fallback·evidence 검증·usage 기록 구현
+- 멱등 application service와 fixture adapters 추가
+- [index.json](/Users/gyuteoi/Desktop/harness/tasks/1-alignment-memory/index.json) 상태를 `completed`로 갱신
+- AC: 12개 + fixture 6개 모두 통과
+- 전체 Backend: `49 passed, 1 skipped`
+- Ruff, 금지 패턴, diff 검사 모두 통과
+- 공식 [GitHub installation token 계약](https://docs.github.com/en/apps/creating-github-apps/authenticating-with-a-github-app/generating-an-installation-access-token-for-a-github-app)과 [OpenRouter structured outputs 계약](https://openrouter.ai/docs/guides/features/structured-outputs)을 반영했습니다.
+
+커밋: `ad76ce5 feat(alignment-memory): phase 4 - integrations`
+
+작업 트리는 깨끗하며 push는 수행하지 않았습니다.
