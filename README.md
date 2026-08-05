@@ -1,8 +1,8 @@
-# Harness — Alignment Memory
+# Alignment Memory
 
 > GitHub에 흩어진 결정과 근거를 프로젝트 기억으로 보존하고, 새 PR이 그 결정과 맞는지 확인하는 협업 도구
 
-**Harness**는 Codex CLI 기반의 자율 구현 하네스입니다. 이 저장소의 첫 번째 제품인 **Alignment Memory**는 GitHub의 Markdown, Issue, PR, diff, commit message를 근거가 보존된 프로젝트 기억으로 만들고, PR을 다음 세 상태로 분석합니다.
+**Alignment Memory**는 GitHub의 Markdown, Issue, PR, diff, commit message를 근거가 보존된 프로젝트 기억으로 만들고, PR을 다음 세 상태로 분석합니다.
 
 - **Aligned**: 기존 목표·요구사항·결정과 충돌하지 않음
 - **Missing Alignment**: 의도 또는 근거가 더 필요함
@@ -29,7 +29,7 @@ supabase/migrations/      PostgreSQL 스키마와 RLS 정책
 .github/workflows/        PR Analyze / merge Publish Actions
 knowledge/generated/      merge 뒤 자동 생성되는 공식 지식
 docs/                     제품, 운영, 배포의 기준 문서
-tasks/                    Harness 단계별 구현 artifact
+tasks/                    단계별 구현 artifact
 ```
 
 ## 빠른 시작: 외부 계정 없이 실행
@@ -47,8 +47,8 @@ API 키나 `.env` 파일은 fixture 모드에 필요하지 않습니다.
 ### 1. 의존성 설치
 
 ```bash
-git clone https://github.com/gyutaetae/harness.git
-cd harness
+git clone https://github.com/gyutaetae/alignment-memory.git
+cd alignment-memory
 make setup
 ```
 
@@ -163,9 +163,9 @@ docker run --rm -e APP_MODE=fixture -e PORT=8000 -p 8000:8000 \
   alignment-memory-api:local
 ```
 
-## Harness를 이용해 새 작업 시작하기
+## 개발 하네스 사용하기
 
-이 저장소의 구현 하네스는 요구를 바로 코딩하지 않고 다음 순서로 artifact를 남깁니다.
+이 저장소에는 요구를 바로 코딩하지 않고 단계별 artifact를 남기는 Codex 구현 하네스도 포함돼 있습니다.
 
 ```text
 요구 한 줄

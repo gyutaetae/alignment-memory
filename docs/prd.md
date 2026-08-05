@@ -22,7 +22,7 @@ The user must be able to answer, with sources: **Can this change be merged, what
 
 ## Primary users and initial boundary
 
-- One public GitHub repository: `gyutaetae/harness`.
+- One public GitHub repository: `gyutaetae/alignment-memory`.
 - Four-person internal team: developer 1, PM 2, designer 1.
 - One invited foreign collaborator for post-MVP validation; use an in-repository branch, not a fork.
 - Desktop web only. GitHub remains the work surface; the web app is the memory and review surface.

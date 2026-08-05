@@ -74,7 +74,7 @@ GitHub App은 선택한 저장소의 허용된 Markdown, Issue, PR, diff, commit
 
 ### 최소 권한
 
-- 설치 범위: `Only select repositories`로 `gyutaetae/harness` 하나만 선택한다.
+- 설치 범위: `Only select repositories`로 `gyutaetae/alignment-memory` 하나만 선택한다.
 - Repository permissions: Metadata read, Contents read, Issues read, Pull requests read, Actions read/write.
 - Webhook events: Installation, Installation repositories, Issues, Pull request, Push.
 - App 자체에는 Contents write나 Pull requests write를 주지 않는다. PR comment와 `knowledge/generated/**` 쓰기는 권한이 분리된 Publish workflow의 `GITHUB_TOKEN`이 담당한다.
